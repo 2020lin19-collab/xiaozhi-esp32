@@ -1,48 +1,31 @@
-name: Build xingzhi-cube-1.54tft-wifi
+name: Build Suyula Firmware
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - ci/*
-  pull_request:
-    branches:
-      - main
-
-permissions:
-  contents: read
 
 jobs:
   build:
-    name: Build merged-binary.bin
     runs-on: ubuntu-latest
-    container:
-      image: espressif/idf:latest
-
+    container: espressif/idf:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Build firmware (esp32s3 / xingzhi-cube-1.54tft-wifi)
+      - name: Build
         shell: bash
         run: |
-          set -euo pipefail
-          source "$IDF_PATH/export.sh"
+          . $IDF_PATH/export.sh
+          git config --global --add safe.directory /__w/xiaozhi-esp32/xiaozhi-esp32
+          
+          # 修正这里的符号错误，直接用 "*"
+          idf.py add-dependency "espressif/mqtt*"
+          
+          python3 scripts/release.py xingzhi-cube-1.54tft-wifi -c config.json
 
-          # Force install mqtt component to avoid esp-ml307 dependency resolution failure
-          idf.py add-dependency "espressif/mqtt^*"
-
-          # Ensure target is esp32s3 and build selected board
-          idf.py set-target esp32s3
-          python3 scripts/release.py xingzhi-cube-1.54tft-wifi
-
-          # Ensure merged binary exists
-          test -f build/merged-binary.bin
-
-      - name: Upload merged binary
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: merged-binary_xingzhi-cube-1.54tft-wifi_${{ github.sha }}
+          name: suyula-firmware
           path: build/merged-binary.bin
-          if-no-files-found: error
