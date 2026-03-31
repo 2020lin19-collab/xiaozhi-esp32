@@ -1,34 +1,50 @@
-name: Build Suyula Firmware
+name: Build xingzhi-cube-1.54tft-wifi
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+      - ci/*
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    name: Build merged-binary.bin
     runs-on: ubuntu-latest
-    # 强制使用自带所有零件的稳定老车间 v5.3
-    container: espressif/idf:release-v5.3
+    container:
+      image: espressif/idf:v5.5.2
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Build
+      - name: Build firmware
         shell: bash
         run: |
-          . $IDF_PATH/export.sh
-          git config --global --add safe.directory /__w/xiaozhi-esp32/xiaozhi-esp32
-          
-          # 暴力破解：强行把源码里要求 5.5.2 的限制降级，骗过编译器！
-          sed -i 's/>=5.5.2/>=5.2/g' main/idf_component.yml
-          sed -i 's/>=5.4.0/>=5.2/g' main/idf_component.yml
-          
-          # 直接编译
-          python3 scripts/release.py xingzhi-cube-1.54tft-wifi -c config.json
+          set -euo pipefail
+          source "$IDF_PATH/export.sh"
 
-      - name: Upload Artifact
+          # 强制补齐 MQTT 依赖（用于你之前的 mqtt 解析报错）
+          idf.py add-dependency "espressif/mqtt^*"
+
+          # 确保目标为 esp32s3
+          idf.py set-target esp32s3
+
+          # 构建指定目标板子：xingzhi-cube-1.54tft-wifi
+          python3 scripts/release.py xingzhi-cube-1.54tft-wifi --name xingzhi-cube-1.54tft-wifi
+
+          # 确保输出存在
+          test -f build/merged-binary.bin
+
+      - name: Upload merged binary
         uses: actions/upload-artifact@v4
         with:
-          name: suyula-firmware
+          name: merged-binary_xingzhi-cube-1.54tft-wifi_${{ github.sha }}
           path: build/merged-binary.bin
+          if-no-files-found: error
