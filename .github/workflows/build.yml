@@ -6,7 +6,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: espressif/idf:release-v5.4
+    # 关键：把版本从 v5.4 改成 latest (这会使用最先进的 5.5+ 版本)
+    container: espressif/idf:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,13 +17,8 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          # 这一行是关键：手动激活编译工具
           . $IDF_PATH/export.sh
-          
-          # 解决 GitHub 目录安全权限问题
           git config --global --add safe.directory /__w/xiaozhi-esp32/xiaozhi-esp32
-          
-          # 执行编译
           python3 scripts/release.py xingzhi-cube-1.54tft-wifi -c config.json
 
       - name: Upload Artifact
